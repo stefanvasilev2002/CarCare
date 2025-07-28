@@ -15,70 +15,131 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Demo user for development
+const DEMO_USER = {
+  id: 'demo-user',
+  email: 'demo@carcare.com',
+  user_metadata: { name: 'Demo User' },
+  created_at: new Date().toISOString()
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const { setUser: setStoreUser } = useAppStore()
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        setStoreUser({
-          id: session.user.id,
-          email: session.user.email!,
-          name: session.user.user_metadata?.name || null,
-          createdAt: new Date(session.user.created_at),
-          updatedAt: new Date()
-        })
-      }
-      setLoading(false)
-    })
+    // Check for demo mode or try Supabase
+    const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || 
+                      process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://demo.supabase.co'
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        setStoreUser({
-          id: session.user.id,
-          email: session.user.email!,
-          name: session.user.user_metadata?.name || null,
-          createdAt: new Date(session.user.created_at),
-          updatedAt: new Date()
-        })
-      } else {
-        setStoreUser(null)
-      }
+    if (isDemoMode) {
+      // Auto-login with demo user for development
+      const demoUser = DEMO_USER as any
+      setUser(demoUser)
+      setStoreUser({
+        id: demoUser.id,
+        email: demoUser.email,
+        name: demoUser.user_metadata?.name || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
       setLoading(false)
-    })
+    } else {
+      // Try real Supabase auth
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          setStoreUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata?.name || null,
+            createdAt: new Date(session.user.created_at),
+            updatedAt: new Date()
+          })
+        }
+        setLoading(false)
+      })
 
-    return () => subscription.unsubscribe()
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          setStoreUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata?.name || null,
+            createdAt: new Date(session.user.created_at),
+            updatedAt: new Date()
+          })
+        } else {
+          setStoreUser(null)
+        }
+        setLoading(false)
+      })
+
+      return () => subscription.unsubscribe()
+    }
   }, [setStoreUser])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || 
+                      process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://demo.supabase.co'
+
+    if (isDemoMode) {
+      // Demo login - accept any email/password
+      if (email && password) {
+        const demoUser = { ...DEMO_USER, email } as any
+        setUser(demoUser)
+        setStoreUser({
+          id: demoUser.id,
+          email: demoUser.email,
+          name: demoUser.user_metadata?.name || null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+      } else {
+        throw new Error('Please enter email and password')
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+    }
   }
 
   const signUp = async (email: string, password: string, name?: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name: name || ''
+    const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || 
+                      process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://demo.supabase.co'
+
+    if (isDemoMode) {
+      // Demo signup - just sign them in
+      await signIn(email, password)
+    } else {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name || ''
+          }
         }
-      }
-    })
-    if (error) throw error
+      })
+      if (error) throw error
+    }
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || 
+                      process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://demo.supabase.co'
+
+    if (isDemoMode) {
+      setUser(null)
+      setStoreUser(null)
+    } else {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+    }
   }
 
   const value = {

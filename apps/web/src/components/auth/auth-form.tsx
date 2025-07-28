@@ -70,6 +70,17 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
               : 'Start tracking your vehicle maintenance today.'
             }
           </CardDescription>
+          
+          {/* Demo Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-4">
+            <p className="text-sm text-blue-800">
+              <strong>Demo Mode:</strong> Enter any email and password to try the application.
+              No real account needed!
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Try: demo@carcare.com / password123
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
