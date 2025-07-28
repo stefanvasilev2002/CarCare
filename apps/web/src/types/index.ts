@@ -42,7 +42,7 @@ export interface Service {
   serviceDate: Date
   provider: string
   location?: string
-  photos: string[]
+  photos?: string
   notes?: string
   createdAt: Date
   updatedAt: Date
@@ -84,7 +84,7 @@ export interface CreateServiceData {
   serviceDate: Date
   provider: string
   location?: string
-  photos?: string[]
+  photos?: string
   notes?: string
 }
 

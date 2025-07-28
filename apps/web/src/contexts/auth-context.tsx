@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useAppStore } from '@/store'
+import { seedDatabase } from '@/lib/seed'
 
 interface AuthContextType {
   user: User | null
@@ -35,15 +36,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (isDemoMode) {
       // Auto-login with demo user for development
-      const demoUser = DEMO_USER as any
+      const demoUser = DEMO_USER as unknown as User
       setUser(demoUser)
       setStoreUser({
         id: demoUser.id,
-        email: demoUser.email,
+        email: demoUser.email || 'demo@carcare.com',
         name: demoUser.user_metadata?.name || null,
         createdAt: new Date(),
         updatedAt: new Date()
       })
+      // Seed the database with sample data
+      seedDatabase(demoUser.id).catch(console.error)
       setLoading(false)
     } else {
       // Try real Supabase auth
@@ -57,6 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             createdAt: new Date(session.user.created_at),
             updatedAt: new Date()
           })
+          // Seed the database with sample data for new users
+          seedDatabase(session.user.id).catch(console.error)
         }
         setLoading(false)
       })
@@ -73,6 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             createdAt: new Date(session.user.created_at),
             updatedAt: new Date()
           })
+          // Seed the database with sample data for new users
+          if (event === 'SIGNED_IN') {
+            seedDatabase(session.user.id).catch(console.error)
+          }
         } else {
           setStoreUser(null)
         }
@@ -90,15 +99,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isDemoMode) {
       // Demo login - accept any email/password
       if (email && password) {
-        const demoUser = { ...DEMO_USER, email } as any
+        const demoUser = { ...DEMO_USER, email } as unknown as User
         setUser(demoUser)
-        setStoreUser({
-          id: demoUser.id,
-          email: demoUser.email,
-          name: demoUser.user_metadata?.name || null,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        })
+                  setStoreUser({
+            id: demoUser.id,
+            email: demoUser.email || 'demo@carcare.com',
+            name: demoUser.user_metadata?.name || null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
       } else {
         throw new Error('Please enter email and password')
       }
@@ -115,6 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isDemoMode) {
       // Demo signup - just sign them in
       await signIn(email, password)
+      // Seed database for new demo user
+      if (user?.id) {
+        seedDatabase(user.id).catch(console.error)
+      }
     } else {
       const { error } = await supabase.auth.signUp({
         email,
